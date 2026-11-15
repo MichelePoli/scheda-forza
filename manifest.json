@@ -1,0 +1,9 @@
+{
+  "name": "Scheda forza",
+  "short_name": "Scheda forza",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ECEFF3",
+  "theme_color": "#1D5BD0",
+  "icons": [{ "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }]
+}
