@@ -192,6 +192,7 @@ body.has-timer .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 110px)}
 
 /* ---------- Programma (contenuto fisso della scheda) ---------- */
 var LIGHT='1 serie leggera prima (metà carico × 10).';
+var PRESSA_PRE=[[0.5,'10'],[0.75,'5',100]];
 var DAYS={
  a:{name:'Giorno A',sub:'Squat + petto alto · circa 55 min',
   mob:['10 squat a corpo libero lenti, 2″ di pausa in buca','10 slanci per gamba avanti-dietro e 10 laterali','5 affondi camminati per gamba'],
@@ -221,7 +222,7 @@ var DAYS={
    {k:'side-bend',tag:'1',n:'Side bend con manubrio',sets:3,lo:15,hi:15,per:' per lato',rest:60,load:14,step:2},
    {k:'trazioni',tag:'2',n:'Trazioni',heavy:true,sets:4,max:true,rest:150,zav:true,step:2.5,wu:'2 serie leggere di lat machine (× 10, poi × 5 più pesante) oppure 2-3 trazioni facili.',note:'Presa neutra una settimana, presa larga quella dopo. A fine serie aggiungi 1 negativa lenta da 5″.'},
    {k:'panca-incl-bilanciere',tag:'3',n:'Panca inclinata con bilanciere o al multipower',bar:true,pre:[[0,'8'],[0.7,'3']],sets:4,lo:6,hi:8,rest:120,step:2.5,note:'Petto alto.'},
-   {k:'pressa',tag:'4',n:'Pressa',sets:3,lo:10,hi:12,rest:90,step:5,wu:'1 serie leggera × 10.'},
+   {k:'pressa',tag:'4',n:'Pressa',plt:true,pre:PRESSA_PRE,sets:3,lo:10,hi:12,rest:90,step:5},
    {k:'dips',tag:'5a',ss:'a',pair:'5b',n:'Dips alle parallele, busto dritto',sets:3,max:true,rest:0,zav:true,step:2.5,note:'Scendi fino all’altezza delle spalle.'},
    {k:'curl-martello',tag:'5b',ss:'b',n:'Curl a martello',sets:3,lo:10,hi:12,rest:75,step:2,unit:'kg per manubrio'},
    {k:'alzate-manubri',tag:'6',n:'Alzate laterali con manubri',sets:3,lo:12,hi:15,rest:45,load:8,step:1,unit:'kg per manubrio'}
@@ -235,7 +236,7 @@ var DAYS={
    {k:'face-pull',tag:'3b',ss:'b',n:'Face pull al cavo',sets:3,lo:12,hi:15,rest:60,step:2.5,note:'Deltoidi posteriori.'},
    {k:'curl-panca-incl',tag:'4a',ss:'a',pair:'4b',n:'Curl su panca inclinata',sets:3,lo:10,hi:12,rest:0,step:2,unit:'kg per manubrio'},
    {k:'pushdown',tag:'4b',ss:'b',n:'Pushdown al cavo con corda',sets:3,lo:10,hi:12,rest:60,step:2.5},
-   {k:'polpacci-pressa',tag:'5',n:'Polpacci alla pressa',sets:4,lo:15,hi:15,rest:60,load:60,step:5,note:'Massima estensione in alto, pausa di 1″ in allungamento.'}
+   {k:'polpacci-pressa',tag:'5',n:'Polpacci alla pressa',plt:true,sets:4,lo:15,hi:15,rest:60,load:60,step:5,note:'Massima estensione in alto, pausa di 1″ in allungamento.'}
   ]}
 };
 var MUSCLE_GROUPS=['Petto','Schiena','Spalle','Bicipiti','Tricipiti','Gambe','Addome','Altro'];
@@ -312,7 +313,8 @@ var DEFAULT_DAYS=clone(DAYS);
 var savedPlan=lsGet('sf.plan');
 if(savedPlan&&typeof savedPlan==='object'&&Object.keys(savedPlan).length>=1&&Object.keys(savedPlan).every(function(k){return /^[a-g]$/.test(k)&&savedPlan[k]&&Array.isArray(savedPlan[k].ex)})){
   DAYS=savedPlan;
-  Object.keys(DAYS).forEach(function(d){DAYS[d].ex.forEach(function(x){if(x.k==='rematore'&&x.bar==null){x.bar=true;if(x.load!=null&&x.load<20)delete x.load}})});
+  Object.keys(DAYS).forEach(function(d){DAYS[d].ex.forEach(function(x){if(x.k==='rematore'&&x.bar==null){x.bar=true;if(x.load!=null&&x.load<20)delete x.load}
+    if((x.k==='pressa'||x.k==='polpacci-pressa')&&x.plt==null&&!x.bar){x.plt=true;if(x.k==='pressa'&&!x.pre&&x.wu==='1 serie leggera × 10.'){x.pre=PRESSA_PRE;delete x.wu}}})});
   if(DAYS.d&&DAYS.d.opt==null&&DAYS.d.name==='Giorno D'&&DAYS.e==null)DAYS.d.opt=true;
 }
 var SECTIONS=['peso','storico','esercizi','scheda','guida'];
@@ -382,10 +384,12 @@ function rampRows(X){
   rows.forEach(function(r){if(r[0]>prev&&r[0]<X||out.length===0){out.push(r);prev=r[0]}});
   return out;
 }
-function perSide(X){return X<=20?'vuoto':fmtKg((X-20)/2)+' per lato'}
-function plates(X){
-  if(X==null||X<20)return null;var side=(X-20)/2,rest=side,out=[];
-  if(side===0)return 'Bilanciere vuoto';
+function barKg(ex){return ex.plt?0:20}
+function perSide(X,bw){if(bw==null)bw=20;return X<=bw?(bw?'vuoto':'scarica'):fmtKg((X-bw)/2)+' per lato'}
+function plates(X,bw){
+  if(bw==null)bw=20;
+  if(X==null||X<bw)return null;var side=(X-bw)/2,rest=side,out=[];
+  if(side===0)return bw?'Bilanciere vuoto':null;
   [25,20,15,10,5,2.5,1.25].forEach(function(p){while(rest>=p-1e-9){out.push(fmtKg(p));rest-=p}});
   if(rest>1e-6)return 'Per lato: '+fmtKg(side)+' kg';
   if(out.length===1)return 'Per lato: '+fmtKg(side)+' kg';
@@ -610,8 +614,9 @@ function card(key,ex){
         wuInner=[g,h('span',null,'Poi le 4 × 5 a '+fmtKg(cur.load)+' kg.')];
       }else wuInner=h('span',null,'Bilanciere vuoto × 8-10, poi 50% × 5, 70% × 3 e 85% × 1-2 del carico di lavoro. Inserisci il carico per vedere i kg.');
     }else if(ex.pre){
-      wuInner=h('span',null,ex.pre.map(function(p){
-        return (p[0]===0?'bilanciere vuoto':(cur.load!=null&&cur.load>20?fmtKg(r25(cur.load*p[0]))+' kg ('+perSide(r25(cur.load*p[0]))+')':Math.round(p[0]*100)+'% del carico'))+' × '+p[1]}).join(', poi ')+'.');
+      var rk=function(v){return ex.plt?Math.round(v/5)*5:r25(v)};
+      wuInner=h('span',null,ex.pre.filter(function(p){return p[2]==null||cur.load==null||cur.load>=p[2]}).map(function(p){
+        return (p[0]===0?'bilanciere vuoto':(cur.load!=null&&cur.load>20?fmtKg(rk(cur.load*p[0]))+' kg ('+perSide(rk(cur.load*p[0]),barKg(ex))+')':Math.round(p[0]*100)+'% del carico'+(p[2]?' (da '+p[2]+' kg in su)':'')))+' × '+p[1]}).join(', poi ')+'.');
     }else if(ex.wu)wuInner=h('span',null,ex.wu);
     if(wuInner)add(c,det('w-'+dk,'sub',ex.ramp?'Rampa di riscaldamento':'Riscaldamento',wuInner));
 
@@ -625,7 +630,7 @@ function card(key,ex){
         inp,
         h('button',{type:'button',class:'step','data-fid':dk+'-plus','aria-label':'Aumenta il carico',disabled:!ok,onclick:function(){bump(1)}},'+'),
         h('span',{class:'unit',text:ex.zav?'kg di zavorra':(ex.unit||'kg')})));
-      if(ex.bar){var pl=plates(cur.load);if(pl)add(c,h('div',{class:'plates',text:pl}))}
+      if(ex.bar||ex.plt){var pl=plates(cur.load,barKg(ex));if(pl)add(c,h('div',{class:'plates',text:pl}))}
     }
     var goal=h('p',{class:'goal'},'Obiettivo di oggi: ');
     if(ex.max)add(goal,h('b',null,prevTotal!=null?'almeno '+(prevTotal+1)+' in totale':'il massimo a ogni serie'));
@@ -744,11 +749,11 @@ function editBlock(x,i){
   var rest=h('select',{class:'field','data-fid':fid+'rest',onchange:function(){x.rest=+rest.value}});
   rests.forEach(function(s){add(rest,h('option',{value:String(s)},fmtRest(s)))});rest.value=String(x.rest);
   var unit=h('select',{class:'field','data-fid':fid+'unit',onchange:function(){
-      x.bar=unit.value==='bar';x.zav=unit.value==='zav';x.nl=unit.value==='nl';
+      x.bar=unit.value==='bar';x.plt=unit.value==='plt';x.zav=unit.value==='zav';x.nl=unit.value==='nl';
       if(unit.value==='db')x.unit='kg per manubrio';else delete x.unit}},
-    h('option',{value:''},'kg'),h('option',{value:'bar'},'bilanciere 20 kg (kg per lato)'),h('option',{value:'db'},'kg per manubrio'),
-    h('option',{value:'zav'},'zavorra'),h('option',{value:'nl'},'nessun carico'));
-  unit.value=x.bar?'bar':x.zav?'zav':x.nl?'nl':x.unit==='kg per manubrio'?'db':'';
+    h('option',{value:''},'kg'),h('option',{value:'bar'},'bilanciere 20 kg (kg per lato)'),h('option',{value:'plt'},'macchina a dischi (kg per lato)'),
+    h('option',{value:'db'},'kg per manubrio'),h('option',{value:'zav'},'zavorra'),h('option',{value:'nl'},'nessun carico'));
+  unit.value=x.bar?'bar':x.plt?'plt':x.zav?'zav':x.nl?'nl':x.unit==='kg per manubrio'?'db':'';
   var mx=h('input',{type:'checkbox','data-fid':fid+'max',checked:!!x.max,onchange:function(){x.max=mx.checked;render()}});
   var ss=h('input',{type:'checkbox','data-fid':fid+'ss',checked:!!x.ssNext,onchange:function(){x.ssNext=ss.checked;render()}});
   return h('section',{class:'block'},
